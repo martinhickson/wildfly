@@ -13,6 +13,19 @@ on:
         required: false
         default: false
         type: boolean
+      jdk-distribution:
+        description: 'JDK Distribution'
+        required: false
+        default: 'corretto'
+        type: choice
+        options:
+          - temurin
+          - semeru
+          - microsoft
+          - oracle
+          - zulu
+          - corretto
+          - liberica
 
 jobs:
   build-and-release:
@@ -27,7 +40,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: 8
-          distribution: 'corretto'
+          distribution: ${{ inputs.jdk-distribution }}
           cache: 'maven'
 
       # Set up Maven settings for GitHub Packages authentication
@@ -67,8 +80,8 @@ jobs:
           if [ -d "$LOCAL_REPO" ]; then find "$LOCAL_REPO" -name "*SNAPSHOT*" | xargs -I {} rm -rfv "{}"; fi
         shell: bash
 
-      - name: Build with Maven Java 8 -Dquickly -DskipTests=true
-        run: mvn -U -B -Dquickly install -DskipTests=true
+      - name: Build with Maven Java 8
+        run: mvn -U -B install -Drelease=true -DskipTests=true -Denforcer.skip=true -Dcheckstyle.skip=true
 
       - name: Generate SHA-512 checksums for JARs
         run: |
@@ -88,19 +101,37 @@ jobs:
           rm -rf release-assets/
         shell: bash
 
-      - name: Find full WildFly distribution ZIP and generate SHA-512
+      - name: Find WildFly and Preview ZIPs, generate SHA-512
         id: find_dist
         run: |
-          DIST_PATH=$(find . -path "*/build/target/wildfly-*.zip" | head -n 1)
+          echo "Listing all *.zip files:"
+          find . -name "*.zip" -exec du -h {} \;
+
+          echo "Listing all wildfly*.zip files in build/target:"
+          find . -path "*/build/target/wildfly*.zip"
+
+          # Find standard WildFly ZIP
+          DIST_PATH=$(find . -path "*/dist/target/wildfly-*.zip" ! -name "wildfly-preview-*.zip" | head -n 1)
           if [[ -f "$DIST_PATH" ]]; then
             DIST_FILE=$(basename "$DIST_PATH")
             cp "$DIST_PATH" "./$DIST_FILE"
             sha512sum "$DIST_FILE" | awk '{ print $1 }' > "$DIST_FILE.sha512"
-            echo "Prepared $DIST_FILE and its SHA-512."
             echo "DIST_FILE_NAME=$DIST_FILE" >> $GITHUB_ENV
           else
             echo "WildFly distribution ZIP not found!"
             exit 1
+          fi
+
+          # Find preview WildFly ZIP
+          PREVIEW_PATH=$(find . -path "*/dist/target/wildfly-preview-*.zip" | head -n 1)
+          if [[ -f "$PREVIEW_PATH" ]]; then
+            PREVIEW_FILE=$(basename "$PREVIEW_PATH")
+            cp "$PREVIEW_PATH" "./$PREVIEW_FILE"
+            sha512sum "$PREVIEW_FILE" | awk '{ print $1 }' > "$PREVIEW_FILE.sha512"
+            echo "PREVIEW_FILE_NAME=$PREVIEW_FILE" >> $GITHUB_ENV
+          else
+            echo "WildFly preview ZIP not found!"
+            # Do not exit here, it's optional
           fi
         shell: bash
 
@@ -111,8 +142,6 @@ jobs:
           tag_name: draft-${{ github.run_number }}
           draft: true
           files: |
-            wildfly-artifacts.zip
-            wildfly-artifacts.zip.sha512
             ${{ env.DIST_FILE_NAME }}
             ${{ env.DIST_FILE_NAME }}.sha512
         env:
