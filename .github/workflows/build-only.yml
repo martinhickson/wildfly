@@ -16,7 +16,7 @@ on:
       jdk-distribution:
         description: 'JDK Distribution'
         required: false
-        default: 'corretto'
+        default: 'temurin'
         type: choice
         options:
           - temurin
@@ -36,10 +36,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Corretto 8 (JDK 8)
+      - name: Set up Corretto 11 (JDK 11)
         uses: actions/setup-java@v4
         with:
-          java-version: 8
+          java-version: 11
           distribution: ${{ inputs.jdk-distribution }}
           cache: 'maven'
 
@@ -52,6 +52,16 @@ jobs:
             <servers>
               <server>
                 <id>github</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
+              </server>
+              <server>
+                <id>github-lucene-solr</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
+              </server>
+              <server>
+                <id>github-xalan2</id>
                 <username>${{ github.actor }}</username>
                 <password>${{ secrets.GITHUB_TOKEN }}</password>
               </server>
@@ -80,7 +90,7 @@ jobs:
           if [ -d "$LOCAL_REPO" ]; then find "$LOCAL_REPO" -name "*SNAPSHOT*" | xargs -I {} rm -rfv "{}"; fi
         shell: bash
 
-      - name: Build with Maven Java 8
+      - name: Build with Maven Java 11
         run: mvn -U -B install -Drelease=true -DskipTests=true -Denforcer.skip=true -Dcheckstyle.skip=true
 
       - name: Generate SHA-512 checksums for JARs
