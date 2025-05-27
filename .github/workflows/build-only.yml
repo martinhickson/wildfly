@@ -121,7 +121,8 @@ jobs:
           find . -path "*/build/target/wildfly*.zip"
 
           # Find standard WildFly ZIP
-          DIST_PATH=$(find . -path "*/dist/target/wildfly-*.zip" ! -name "wildfly-preview-*.zip" | head -n 1)
+          DIST_PATH=$(find . -path "*/dist/target/wildfly-*.zip" ! -name "wildfly-preview-*.zip" \
+            ! -name "*src.zip" | head -n 1)
           if [[ -f "$DIST_PATH" ]]; then
             DIST_FILE=$(basename "$DIST_PATH")
             cp "$DIST_PATH" "./$DIST_FILE"
@@ -129,6 +130,19 @@ jobs:
             echo "DIST_FILE_NAME=$DIST_FILE" >> $GITHUB_ENV
           else
             echo "WildFly distribution ZIP not found!"
+            exit 1
+          fi
+
+          # Find standard WildFly ZIP SRC
+          DIST_SRC_PATH=$(find . -path "*/dist/target/wildfly-*src.zip" ! -name "wildfly-preview-*.zip" \
+            | head -n 1)
+          if [[ -f "$DIST_SRC_PATH" ]]; then
+            DIST_SRC_FILE=$(basename "$DIST_SRC_PATH")
+            cp "$DIST_SRC_PATH" "./$DIST_SRC_FILE"
+            sha512sum "$DIST_SRC_FILE" | awk '{ print $1 }' > "$DIST_SRC_FILE.sha512"
+            echo "DIST_SRC_FILE_NAME=$DIST_SRC_FILE" >> $GITHUB_ENV
+          else
+            echo "WildFly distribution ZIP SRC not found!"
             exit 1
           fi
 
@@ -154,5 +168,7 @@ jobs:
           files: |
             ${{ env.DIST_FILE_NAME }}
             ${{ env.DIST_FILE_NAME }}.sha512
+            ${{ env.DIST_SRC_FILE_NAME }}
+            ${{ env.DIST_SRC_FILE_NAME }}.sha512
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
