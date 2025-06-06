@@ -66,20 +66,28 @@ jobs:
                 <password>${{ secrets.GITHUB_TOKEN }}</password>
               </server>
             </servers>
-            <repositories>
-              <repository>
-                <id>github</id>
-                <url>https://maven.pkg.github.com/martinhickson/wildfly-core</url>
-                <releases>
-                  <enabled>true</enabled>
-                  <updatePolicy>never</updatePolicy>
-                </releases>
-                <snapshots>
-                  <enabled>true</enabled>
-                  <updatePolicy>never</updatePolicy>
-                </snapshots>
-              </repository>
-            </repositories>
+            <profiles>
+              <profile>
+                <id>additional-repositories</id>
+                <repositories>
+                  <repository>
+                    <id>github</id>
+                    <url>https://maven.pkg.github.com/martinhickson/wildfly-core</url>
+                    <releases>
+                      <enabled>true</enabled>
+                      <updatePolicy>never</updatePolicy>
+                    </releases>
+                    <snapshots>
+                      <enabled>true</enabled>
+                      <updatePolicy>never</updatePolicy>
+                    </snapshots>
+                  </repository>
+                </repositories>
+              </profile>
+            </profiles>
+            <activeProfiles>
+              <activeProfile>additional-repositories</activeProfile>
+            </activeProfiles>
           </settings>
           EOF
 
