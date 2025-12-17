@@ -47,37 +47,22 @@ public class CDIExtension implements Extension {
     private HealthCheck defaultStartupCheck;
     private Module currentContextModule; // Module for the current BDA being processed
 
-    private static final String ANSI_RESET = "\u001B[0m";
-    private static final String ANSI_GREEN = "\u001B[32m";
-    private static final String ANSI_YELLOW = "\u001B[33m";
-    private static final String ANSI_RED = "\u001B[31m";
-    private static final String ANSI_CYAN = "\u001B[36m";
-
     public CDIExtension(MicroProfileHealthReporter healthReporter, Module module, Supplier<BeanManager> beanManagerSupplier) {
-        System.out.println(ANSI_CYAN + "🚀 [MicroProfile Health CDIExtension] Constructor called for module: " +
-                (module != null ? module.getName() : "null") + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("🚀 [MicroProfile Health CDIExtension] Constructor called for module: " +
-                (module != null ? module.getName() : "null"));
+        MicroProfileHealthLogger.LOGGER.debug("CDIExtension constructor called for module: " + (module != null ? module.getName() : "null"));
         this.reporter = healthReporter;
         this.module = module;
         this.beanManagerSupplier = beanManagerSupplier;
     }
 
     public void afterDeploymentValidation(@Observes final AfterDeploymentValidation adv, BeanManager eventBM) {
-        System.out.println(ANSI_CYAN + "================================================================================" + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("================================================================================");
-        System.out.println(ANSI_CYAN + "✨ [afterDeploymentValidation] called" + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("✨ [afterDeploymentValidation] called");
-        System.out.println(ANSI_CYAN + "   Extension instance: " + this + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("   Extension instance: " + this);
-        System.out.println(ANSI_CYAN + "   Event BeanManager: " + eventBM + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("   Event BeanManager: " + eventBM);
+        MicroProfileHealthLogger.LOGGER.debug("afterDeploymentValidation called");
+        MicroProfileHealthLogger.LOGGER.debug("  Extension instance: " + this);
+        MicroProfileHealthLogger.LOGGER.debug("  Event BeanManager: " + eventBM);
         
         // Get the registry and process ALL registered deployment contexts
         // This ensures we discover health checks in the EAR and all nested WARs
         DeploymentContextRegistry registry = DeploymentContextRegistry.getInstance();
-        System.out.println(ANSI_CYAN + "   Registry contains " + registry.size() + " deployment context(s)" + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("   Registry contains " + registry.size() + " deployment context(s)");
+        MicroProfileHealthLogger.LOGGER.debug("  Registry contains " + registry.size() + " deployment context(s)");
         
         // Process each deployment context (EAR + all nested WARs)
         for (java.util.Map.Entry<String, DeploymentContextRegistry.DeploymentContext> entry : 
@@ -85,38 +70,32 @@ public class CDIExtension implements Extension {
             String deploymentUnitName = entry.getKey();
             DeploymentContextRegistry.DeploymentContext deploymentContext = entry.getValue();
             
-            System.out.println(ANSI_CYAN + "   Processing deployment context: " + deploymentUnitName + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("   Processing deployment context: " + deploymentUnitName);
+            MicroProfileHealthLogger.LOGGER.debug("  Processing deployment context: " + deploymentUnitName);
             
             Module contextModule = deploymentContext.getModule();
             Supplier<BeanManager> contextBeanManagerSupplier = deploymentContext.getBeanManagerSupplier();
             
             if (contextModule == null) {
-                System.out.println(ANSI_YELLOW + "   ⚠ Skipping deployment context with null module: " + deploymentUnitName + ANSI_RESET);
-                MicroProfileHealthLogger.LOGGER.warn("   ⚠ Skipping deployment context with null module: " + deploymentUnitName);
+                MicroProfileHealthLogger.LOGGER.warn("Skipping deployment context with null module: " + deploymentUnitName);
                 continue;
             }
             
-            System.out.println(ANSI_CYAN + "   Context module: " + contextModule.getName() + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("   Context module: " + contextModule.getName());
+            MicroProfileHealthLogger.LOGGER.debug("  Context module: " + contextModule.getName());
             
             // Get the BeanManager for this deployment context
             BeanManager contextBeanManager = null;
             if (contextBeanManagerSupplier != null) {
                 try {
                     contextBeanManager = contextBeanManagerSupplier.get();
-                    System.out.println(ANSI_CYAN + "   Context BeanManager: " + contextBeanManager + ANSI_RESET);
-                    MicroProfileHealthLogger.LOGGER.warn("   Context BeanManager: " + contextBeanManager);
+                    MicroProfileHealthLogger.LOGGER.debug("  Context BeanManager: " + contextBeanManager);
                 } catch (Exception e) {
-                    System.out.println(ANSI_YELLOW + "   ⚠ Could not get BeanManager for " + deploymentUnitName + ": " + e.getMessage() + ANSI_RESET);
-                    MicroProfileHealthLogger.LOGGER.warn("   ⚠ Could not get BeanManager for " + deploymentUnitName + ": " + e.getMessage());
+                    MicroProfileHealthLogger.LOGGER.error("Could not get BeanManager for " + deploymentUnitName + ": " + e.getMessage());
                     continue;
                 }
             }
             
             if (contextBeanManager == null) {
-                System.out.println(ANSI_YELLOW + "   ⚠ Skipping deployment context with null BeanManager: " + deploymentUnitName + ANSI_RESET);
-                MicroProfileHealthLogger.LOGGER.warn("   ⚠ Skipping deployment context with null BeanManager: " + deploymentUnitName);
+                MicroProfileHealthLogger.LOGGER.warn("Skipping deployment context with null BeanManager: " + deploymentUnitName);
                 continue;
             }
             
@@ -124,36 +103,34 @@ public class CDIExtension implements Extension {
             currentContextModule = contextModule;
             
             // Create Instance from the context BeanManager
-            System.out.println(ANSI_CYAN + "   Creating Instance from context BeanManager for: " + deploymentUnitName + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("   Creating Instance from context BeanManager for: " + deploymentUnitName);
+            MicroProfileHealthLogger.LOGGER.debug("  Creating Instance from context BeanManager for: " + deploymentUnitName);
             instance = contextBeanManager.createInstance();
-            System.out.println(ANSI_CYAN + "🛠 Created Instance: " + instance + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("🛠 Created Instance: " + instance);
+            MicroProfileHealthLogger.LOGGER.debug("  Created Instance: " + instance);
             
-            System.out.println(ANSI_CYAN + "   Searching for health checks in module: " + contextModule.getName() + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("   Searching for health checks in module: " + contextModule.getName());
+            MicroProfileHealthLogger.LOGGER.debug("  Searching for health checks in module: " + contextModule.getName());
             
             // Discover health checks for this deployment context
-            System.out.println(ANSI_CYAN + "   [1/3] Searching for Liveness checks in " + deploymentUnitName + "..." + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("   [1/3] Searching for Liveness checks in " + deploymentUnitName + "...");
+            MicroProfileHealthLogger.LOGGER.debug("  [1/3] Searching for Liveness checks in " + deploymentUnitName + "...");
             addHealthChecks(Liveness.Literal.INSTANCE, reporter::addLivenessCheck, livenessChecks);
             
-            System.out.println(ANSI_CYAN + "   [2/3] Searching for Readiness checks in " + deploymentUnitName + "..." + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("   [2/3] Searching for Readiness checks in " + deploymentUnitName + "...");
+            MicroProfileHealthLogger.LOGGER.debug("  [2/3] Searching for Readiness checks in " + deploymentUnitName + "...");
             addHealthChecks(Readiness.Literal.INSTANCE, reporter::addReadinessCheck, readinessChecks);
             
-            System.out.println(ANSI_CYAN + "   [3/3] Searching for Startup checks in " + deploymentUnitName + "..." + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("   [3/3] Searching for Startup checks in " + deploymentUnitName + "...");
+            MicroProfileHealthLogger.LOGGER.debug("  [3/3] Searching for Startup checks in " + deploymentUnitName + "...");
             addHealthChecks(Startup.Literal.INSTANCE, reporter::addStartupCheck, startupChecks);
             
-            System.out.println(ANSI_CYAN + "   Summary for " + deploymentUnitName + " (module: " + contextModule.getName() + "):" + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("   Summary for " + deploymentUnitName + " (module: " + contextModule.getName() + "):");
-            System.out.println(ANSI_CYAN + "     - Liveness checks found: " + livenessChecks.size() + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("     - Liveness checks found: " + livenessChecks.size());
-            System.out.println(ANSI_CYAN + "     - Readiness checks found: " + readinessChecks.size() + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("     - Readiness checks found: " + readinessChecks.size());
-            System.out.println(ANSI_CYAN + "     - Startup checks found: " + startupChecks.size() + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("     - Startup checks found: " + startupChecks.size());
+            // Log summary of health checks found
+            MicroProfileHealthLogger.LOGGER.debug("  Summary for " + deploymentUnitName + " (module: " + contextModule.getName() + "):");
+            MicroProfileHealthLogger.LOGGER.debug("    - Liveness checks found: " + livenessChecks.size());
+            MicroProfileHealthLogger.LOGGER.debug("    - Readiness checks found: " + readinessChecks.size());
+            MicroProfileHealthLogger.LOGGER.debug("    - Startup checks found: " + startupChecks.size());
+            
+            if (livenessChecks.size() > 0 || readinessChecks.size() > 0 || startupChecks.size() > 0) {
+                MicroProfileHealthLogger.LOGGER.debug("Health checks discovered for " + deploymentUnitName + 
+                    " (Liveness: " + livenessChecks.size() + 
+                    ", Readiness: " + readinessChecks.size() + 
+                    ", Startup: " + startupChecks.size() + ")");
+            }
             
             // Check for default checks (only for this specific deployment, not global)
             Config config = ConfigProvider.getConfig(contextModule.getClassLoader());
@@ -162,53 +139,38 @@ public class CDIExtension implements Extension {
             if (readinessChecks.isEmpty() && !disableDefaults) {
                 defaultReadinessCheck = new DefaultReadinessHealthCheck(contextModule.getName());
                 reporter.addReadinessCheck(defaultReadinessCheck, contextModule.getClassLoader());
-                System.out.println(ANSI_YELLOW + "⚡ Registered default Readiness check for: " + contextModule.getName() + ANSI_RESET);
-                MicroProfileHealthLogger.LOGGER.warn("⚡ Registered default Readiness check for: " + contextModule.getName());
+                MicroProfileHealthLogger.LOGGER.debug("  Registered default Readiness check for: " + contextModule.getName());
             }
             
             if (startupChecks.isEmpty() && !disableDefaults) {
                 defaultStartupCheck = new DefaultStartupHealthCheck(contextModule.getName());
                 reporter.addStartupCheck(defaultStartupCheck, contextModule.getClassLoader());
-                System.out.println(ANSI_YELLOW + "⚡ Registered default Startup check for: " + contextModule.getName() + ANSI_RESET);
-                MicroProfileHealthLogger.LOGGER.warn("⚡ Registered default Startup check for: " + contextModule.getName());
+                MicroProfileHealthLogger.LOGGER.debug("  Registered default Startup check for: " + contextModule.getName());
             }
         }
         
         reporter.setUserChecksProcessed(true);
-        System.out.println(ANSI_CYAN + "================================================================================" + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("================================================================================");
+        MicroProfileHealthLogger.LOGGER.debug("afterDeploymentValidation completed");
     }
 
     private void addHealthChecks(AnnotationLiteral qualifier,
                                  BiConsumer<HealthCheck, ClassLoader> healthFunction,
                                  List<HealthCheck> healthChecks) {
 
-        System.out.println(ANSI_CYAN + "🔍 addHealthChecks() - Qualifier: " + qualifier + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("🔍 addHealthChecks() - Qualifier: " + qualifier);
-        System.out.println(ANSI_CYAN + "   Instance: " + instance + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("   Instance: " + instance);
-        System.out.println(ANSI_CYAN + "   Instance class: " + (instance != null ? instance.getClass().getName() : "null") + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("   Instance class: " + (instance != null ? instance.getClass().getName() : "null"));
-        System.out.println(ANSI_CYAN + "   Selecting HealthCheck.class with qualifier: " + qualifier + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("   Selecting HealthCheck.class with qualifier: " + qualifier);
-        
+        MicroProfileHealthLogger.LOGGER.debug("  addHealthChecks() - Qualifier: " + qualifier);
+        MicroProfileHealthLogger.LOGGER.debug("    Instance: " + instance);
+        MicroProfileHealthLogger.LOGGER.debug("    Instance class: " + (instance != null ? instance.getClass().getName() : "null"));
+        MicroProfileHealthLogger.LOGGER.debug("    Selecting HealthCheck.class with qualifier: " + qualifier);
         
         Instance<HealthCheck> healthCheckInstance = instance.select(HealthCheck.class, qualifier);
-        System.out.println(ANSI_CYAN + "   HealthCheck Instance: " + healthCheckInstance + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("   HealthCheck Instance: " + healthCheckInstance);
-        System.out.println(ANSI_CYAN + "   HealthCheck Instance class: " + (healthCheckInstance != null ? healthCheckInstance.getClass().getName() : "null") + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("   HealthCheck Instance class: " + (healthCheckInstance != null ? healthCheckInstance.getClass().getName() : "null"));
-        System.out.println(ANSI_CYAN + "   Is Unsatisfied: " + healthCheckInstance.isUnsatisfied() + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("   Is Unsatisfied: " + healthCheckInstance.isUnsatisfied());
-        System.out.println(ANSI_CYAN + "   Is Ambiguous: " + healthCheckInstance.isAmbiguous() + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("   Is Ambiguous: " + healthCheckInstance.isAmbiguous());
-        
+        MicroProfileHealthLogger.LOGGER.debug("    HealthCheck Instance: " + healthCheckInstance);
+        MicroProfileHealthLogger.LOGGER.debug("    HealthCheck Instance class: " + (healthCheckInstance != null ? healthCheckInstance.getClass().getName() : "null"));
+        MicroProfileHealthLogger.LOGGER.debug("    Is Unsatisfied: " + healthCheckInstance.isUnsatisfied());
+        MicroProfileHealthLogger.LOGGER.debug("    Is Ambiguous: " + healthCheckInstance.isAmbiguous());
 
         if (healthCheckInstance.isUnsatisfied()) {
-            System.out.println(ANSI_YELLOW + "⚠ No health checks found for qualifier: " + qualifier + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("⚠ No health checks found for qualifier: " + qualifier);
-            System.out.println(ANSI_YELLOW + "   This BDA does not contain any beans annotated with " + qualifier + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("   This BDA does not contain any beans annotated with " + qualifier);
+            MicroProfileHealthLogger.LOGGER.debug("    No health checks found for qualifier: " + qualifier);
+            MicroProfileHealthLogger.LOGGER.debug("    This BDA does not contain any beans annotated with " + qualifier);
             return;
         }
 
@@ -217,24 +179,23 @@ public class CDIExtension implements Extension {
             count++;
             String hcClassName = hc.getClass().getName();
             ClassLoader hcClassLoader = hc.getClass().getClassLoader();
-            System.out.println(ANSI_GREEN + "✅ Found health check #" + count + ": " + hcClassName + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("✅ Found health check #" + count + ": " + hcClassName);
-            System.out.println(ANSI_GREEN + "   Health check classloader: " + hcClassLoader + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("   Health check classloader: " + hcClassLoader);
+            MicroProfileHealthLogger.LOGGER.debug("    Found health check #" + count + ": " + hcClassName);
+            MicroProfileHealthLogger.LOGGER.debug("      Health check classloader: " + hcClassLoader);
+            
             // Use currentContextModule if available, otherwise fall back to module
             Module moduleToUse = currentContextModule != null ? currentContextModule : module;
-            System.out.println(ANSI_GREEN + "   Registering with module classloader: " + moduleToUse.getClassLoader() + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("   Registering with module classloader: " + moduleToUse.getClassLoader());
+            MicroProfileHealthLogger.LOGGER.debug("      Registering with module classloader: " + moduleToUse.getClassLoader());
+            
             healthFunction.accept(hc, moduleToUse.getClassLoader());
             healthChecks.add(hc);
-            System.out.println(ANSI_GREEN + "   ✓ Registered successfully" + ANSI_RESET);
-            MicroProfileHealthLogger.LOGGER.warn("   ✓ Registered successfully");
+            MicroProfileHealthLogger.LOGGER.debug("      Registered successfully");
         }
-        System.out.println(ANSI_CYAN + "   Total health checks found for " + qualifier + ": " + count + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("   Total health checks found for " + qualifier + ": " + count);
+        
+        MicroProfileHealthLogger.LOGGER.debug("    Total health checks found for " + qualifier + ": " + count);
     }
 
     public void beforeShutdown(@Observes final BeforeShutdown bs) {
+        MicroProfileHealthLogger.LOGGER.debug("beforeShutdown called - removing all health checks");
         removeHealthCheck(livenessChecks, reporter::removeLivenessCheck);
         removeHealthCheck(readinessChecks, reporter::removeReadinessCheck);
         removeHealthCheck(startupChecks, reporter::removeStartupCheck);
@@ -250,8 +211,7 @@ public class CDIExtension implements Extension {
         }
 
         instance = null;
-        System.out.println(ANSI_CYAN + "🛑 [beforeShutdown] All health checks removed" + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("🛑 [beforeShutdown] All health checks removed");
+        MicroProfileHealthLogger.LOGGER.debug("beforeShutdown completed - all health checks removed");
     }
 
     private void removeHealthCheck(List<HealthCheck> healthChecks,
@@ -265,8 +225,7 @@ public class CDIExtension implements Extension {
 
     public void vetoSmallryeHealthReporter(@Observes ProcessAnnotatedType<SmallRyeHealthReporter> pat) {
         pat.veto();
-        System.out.println(ANSI_YELLOW + "🚫 SmallRyeHealthReporter vetoed" + ANSI_RESET);
-        MicroProfileHealthLogger.LOGGER.warn("🚫 SmallRyeHealthReporter vetoed");
+        MicroProfileHealthLogger.LOGGER.debug("SmallRyeHealthReporter vetoed");
     }
 
     private static final class DefaultReadinessHealthCheck implements HealthCheck {
