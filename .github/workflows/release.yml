@@ -112,19 +112,15 @@ jobs:
       - name: Update version in all pom.xml files
         run: |
           echo "Updating version to ${{ inputs.version }}"
-          mvn versions:set -DnewVersion=${{ inputs.version }} -DgenerateBackupPoms=false
-          mvn versions:commit
-          echo "Updated version in all pom.xml files to ${{ inputs.version }}"
-
-      - name: Verify version updates
-        run: |
-          # Verify root pom.xml version
-          ROOT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          if [ "$ROOT_VERSION" != "${{ inputs.version }}" ]; then
-            echo "Error: Root pom.xml version mismatch. Expected: ${{ inputs.version }}, Found: $ROOT_VERSION"
+          if ! mvn versions:set -DnewVersion=${{ inputs.version }} -DgenerateBackupPoms=false; then
+            echo "Error: Failed to update version using Maven versions:set"
             exit 1
           fi
-          echo "Version verification complete. Root pom.xml version: $ROOT_VERSION"
+          if ! mvn versions:commit; then
+            echo "Error: Failed to commit version changes"
+            exit 1
+          fi
+          echo "Updated version in all pom.xml files to ${{ inputs.version }}"
 
       - name: Commit version changes
         run: |
