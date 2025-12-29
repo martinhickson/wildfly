@@ -49,6 +49,13 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: 11
+          distribution: temurin
+          cache: 'maven'
+
       - name: Validate inputs
         run: |
           if [[ ! "${{ inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[A-Za-z0-9-]+)*$ ]]; then
@@ -104,42 +111,19 @@ jobs:
 
       - name: Update version in all pom.xml files
         run: |
-          CURRENT_VERSION=$(grep -m 1 '<version>' pom.xml | sed 's/.*<version>\(.*\)<\/version>.*/\1/' | tr -d ' ')
-          echo "Current version: $CURRENT_VERSION"
-          echo "New version: ${{ inputs.version }}"
-          
-          if [ "$CURRENT_VERSION" == "${{ inputs.version }}" ]; then
-            echo "Version is already ${{ inputs.version }}, skipping update"
-            exit 0
-          fi
-          
-          # Find all pom.xml files and update version
-          # This updates both project version and parent version references
-          find . -name "pom.xml" -type f ! -path "*/target/*" | while read pomfile; do
-            # Update version tags (handles both project version and parent version)
-            sed -i "s|<version>$CURRENT_VERSION</version>|<version>${{ inputs.version }}</version>|g" "$pomfile"
-          done
-          
-          echo "Updated version in all pom.xml files from $CURRENT_VERSION to ${{ inputs.version }}"
+          echo "Updating version to ${{ inputs.version }}"
+          mvn versions:set -DnewVersion=${{ inputs.version }} -DgenerateBackupPoms=false
+          mvn versions:commit
+          echo "Updated version in all pom.xml files to ${{ inputs.version }}"
 
       - name: Verify version updates
         run: |
-          # Check root pom.xml
-          ROOT_VERSION=$(grep -m 1 '<version>' pom.xml | sed 's/.*<version>\(.*\)<\/version>.*/\1/' | tr -d ' ')
+          # Verify root pom.xml version
+          ROOT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
           if [ "$ROOT_VERSION" != "${{ inputs.version }}" ]; then
             echo "Error: Root pom.xml version mismatch. Expected: ${{ inputs.version }}, Found: $ROOT_VERSION"
             exit 1
           fi
-          
-          # Verify a few key pom.xml files have the correct version
-          echo "Verifying version in key pom.xml files..."
-          find . -name "pom.xml" -type f ! -path "*/target/*" | head -10 | while read pomfile; do
-            VERSION_IN_FILE=$(grep -m 1 '<version>' "$pomfile" | sed 's/.*<version>\(.*\)<\/version>.*/\1/' | tr -d ' ' || echo "")
-            if [ -n "$VERSION_IN_FILE" ] && [[ "$pomfile" == *"/pom.xml" ]] && [[ "$pomfile" != *"/target/"* ]]; then
-              echo "  $pomfile: $VERSION_IN_FILE"
-            fi
-          done
-          
           echo "Version verification complete. Root pom.xml version: $ROOT_VERSION"
 
       - name: Commit version changes
