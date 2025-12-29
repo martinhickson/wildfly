@@ -112,23 +112,60 @@ jobs:
       - name: Update version in all pom.xml files
         run: |
           echo "Updating version to ${{ inputs.version }}"
-          mvn versions:set -DnewVersion=${{ inputs.version }} -DgenerateBackupPoms=false
-          mvn versions:commit
-          echo "Updated version in all pom.xml files to ${{ inputs.version }}"
-
-      - name: Verify version updates
-        run: |
-          # Verify root pom.xml version
-          ROOT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          if [ "$ROOT_VERSION" != "${{ inputs.version }}" ]; then
-            echo "Error: Root pom.xml version mismatch. Expected: ${{ inputs.version }}, Found: $ROOT_VERSION"
+          if ! mvn org.codehaus.mojo:versions-maven-plugin:2.15.0:set -DnewVersion=${{ inputs.version }} -DgenerateBackupPoms=false; then
+            echo "Error: Failed to update version using Maven versions:set"
             exit 1
           fi
-          echo "Version verification complete. Root pom.xml version: $ROOT_VERSION"
+          if ! mvn org.codehaus.mojo:versions-maven-plugin:2.15.0:commit; then
+            echo "Error: Failed to commit version changes"
+            exit 1
+          fi
+          echo "Updated version in all pom.xml files to ${{ inputs.version }}"
+
+      - name: Build WildFly distribution
+        run: |
+          echo "Building WildFly distribution..."
+          mvn -U -B install -Drelease=true -DskipTests=true -Denforcer.skip=true -Dcheckstyle.skip=true
+          echo "Build completed"
+
+      - name: Find WildFly distribution files and generate SHA-512
+        id: find_dist
+        run: |
+          # Find standard WildFly ZIP
+          DIST_PATH=$(find . -path "*/dist/target/wildfly-*.zip" ! -name "wildfly-preview-*.zip" \
+            ! -name "*src.zip" | head -n 1)
+          if [[ -f "$DIST_PATH" ]]; then
+            DIST_FILE=$(basename "$DIST_PATH")
+            DIST_DIR=$(dirname "$DIST_PATH")
+            sha512sum "$DIST_PATH" | awk '{ print $1 }' > "$DIST_DIR/$DIST_FILE.sha512"
+            echo "DIST_FILE_PATH=$DIST_PATH" >> $GITHUB_ENV
+            echo "DIST_SHA512_PATH=$DIST_DIR/$DIST_FILE.sha512" >> $GITHUB_ENV
+            echo "Found distribution: $DIST_FILE"
+          else
+            echo "WildFly distribution ZIP not found!"
+            exit 1
+          fi
+
+          # Find standard WildFly ZIP SRC
+          DIST_SRC_PATH=$(find . -path "*/dist/target/wildfly-*src.zip" ! -name "wildfly-preview-*.zip" \
+            | head -n 1)
+          if [[ -f "$DIST_SRC_PATH" ]]; then
+            DIST_SRC_FILE=$(basename "$DIST_SRC_PATH")
+            DIST_SRC_DIR=$(dirname "$DIST_SRC_PATH")
+            sha512sum "$DIST_SRC_PATH" | awk '{ print $1 }' > "$DIST_SRC_DIR/$DIST_SRC_FILE.sha512"
+            echo "DIST_SRC_FILE_PATH=$DIST_SRC_PATH" >> $GITHUB_ENV
+            echo "DIST_SRC_SHA512_PATH=$DIST_SRC_DIR/$DIST_SRC_FILE.sha512" >> $GITHUB_ENV
+            echo "Found source distribution: $DIST_SRC_FILE"
+          else
+            echo "WildFly distribution ZIP SRC not found!"
+            exit 1
+          fi
+        shell: bash
 
       - name: Commit version changes
         run: |
-          git add -A
+          # Only commit pom.xml files, not distribution artifacts
+          git add '**/pom.xml'
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
@@ -160,6 +197,24 @@ jobs:
           git push origin "$CURRENT_BRANCH"
           echo "Pushed commits to $CURRENT_BRANCH"
 
+      - name: Create GitHub Release
+        if: inputs.push_changes && steps.check_tag.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ inputs.tag_name }}
+          name: WildFly Release ${{ inputs.version }} Latest
+          body: |
+            This is a security-enhanced release of WildFly that builds on the solid foundation of the WildFly ${{ inputs.version }} distribution.
+          files: |
+            ${{ env.DIST_FILE_PATH }}
+            ${{ env.DIST_SHA512_PATH }}
+            ${{ env.DIST_SRC_FILE_PATH }}
+            ${{ env.DIST_SRC_SHA512_PATH }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Summary
         run: |
           echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
@@ -170,6 +225,9 @@ jobs:
             echo "- **Branch**: ${{ inputs.branch_name }}" >> $GITHUB_STEP_SUMMARY
           fi
           echo "- **Changes Pushed**: ${{ inputs.push_changes }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.push_changes }}" == "true" ] && [ "${{ steps.check_tag.outputs.exists }}" == "false" ]; then
+            echo "- **GitHub Release**: Created with distribution files" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.check_tag.outputs.exists }}" == "true" ]; then
             echo "⚠️ **Warning**: Tag ${{ inputs.tag_name }} already exists" >> $GITHUB_STEP_SUMMARY
