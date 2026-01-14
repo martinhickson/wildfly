@@ -26,8 +26,13 @@ on:
       push_changes:
         description: 'Push branch and tag to remote?'
         required: false
-        default: false
+        default: true
         type: boolean
+      source_branch:
+        description: 'Source branch to base release on'
+        required: false
+        default: '26.1.3.Final-security-enhanced'
+        type: string
 
 jobs:
   create-release:
@@ -41,6 +46,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.source_branch }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -68,6 +74,7 @@ jobs:
           fi
           echo "Version: ${{ inputs.version }}"
           echo "Tag name: ${{ inputs.tag_name }}"
+          echo "Source branch: ${{ inputs.source_branch }}"
           echo "Branch name: ${{ inputs.branch_name }}"
           echo "Create branch: ${{ inputs.create_branch }}"
           echo "Push changes: ${{ inputs.push_changes }}"
