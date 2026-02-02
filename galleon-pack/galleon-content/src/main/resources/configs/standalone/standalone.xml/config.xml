@@ -2,7 +2,4 @@
 
 <config xmlns="urn:jboss:galleon:config:1.0" name="standalone.xml" model="standalone">
     <feature-group name="standalone"/>
-    <layers>
-        <include name="microprofile-health"/>
-    </layers>
 </config>
