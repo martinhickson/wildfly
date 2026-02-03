@@ -24,7 +24,7 @@ package org.wildfly.extension.microprofile.health.deployment;
 
 import static org.jboss.as.weld.Capabilities.WELD_CAPABILITY_NAME;
 
-import java.util.function.Supplier;
+import java.util.concurrent.CompletableFuture;
 
 import javax.enterprise.inject.spi.BeanManager;
 
@@ -36,7 +36,6 @@ import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 import org.jboss.as.server.deployment.DeploymentUnitProcessor;
 import org.jboss.as.weld.WeldCapability;
 import org.jboss.modules.Module;
-import org.jboss.msc.service.Service;
 import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceController.Mode;
 import org.wildfly.extension.microprofile.health.MicroProfileHealthReporter;
@@ -66,11 +65,14 @@ public class DeploymentProcessor implements DeploymentUnitProcessor {
         if (weldCapability.isPartOfWeldDeployment(deploymentUnit) && deploymentUnit.getParent() == null) {
             final MicroProfileHealthReporter healthReporter = (MicroProfileHealthReporter) phaseContext.getServiceRegistry().getService(MicroProfileHealthSubsystemDefinition.HEALTH_REPORTER_SERVICE).getValue();
 
-            ServiceBuilder<?> serviceBuilder = phaseContext.getServiceTarget().addService(phaseContext.getPhaseServiceName().append("beanMangerSupplier"));
-            Supplier<BeanManager> beanMangerSupplier = weldCapability.addBeanManagerService(deploymentUnit, serviceBuilder);
-            serviceBuilder.setInstance(Service.NULL).setInitialMode(Mode.ON_DEMAND).install();
+            CompletableFuture<BeanManager> beanManagerFuture = new CompletableFuture<>();
+            BeanManagerFutureService beanManagerFutureService = new BeanManagerFutureService(beanManagerFuture);
 
-            weldCapability.registerExtensionInstance(new CDIExtension(healthReporter, module, beanMangerSupplier), deploymentUnit);
+            ServiceBuilder<?> serviceBuilder = phaseContext.getServiceTarget().addService(phaseContext.getPhaseServiceName().append("beanManagerFuture"));
+            weldCapability.addBeanManagerService(deploymentUnit, serviceBuilder, beanManagerFutureService.getBeanManagerInjector());
+            serviceBuilder.setInstance(beanManagerFutureService).setInitialMode(Mode.ACTIVE).install();
+
+            weldCapability.registerExtensionInstance(new CDIExtension(healthReporter, module, beanManagerFuture), deploymentUnit);
         }
 
     }

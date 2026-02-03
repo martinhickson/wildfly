@@ -24,9 +24,10 @@ package org.wildfly.extension.microprofile.health.deployment;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.Instance;
@@ -58,7 +59,9 @@ public class CDIExtension implements Extension {
 
     private final MicroProfileHealthReporter reporter;
     private final Module module;
-    private final Supplier<BeanManager> beanMangerSupplier;
+    private final CompletableFuture<BeanManager> beanManagerFuture;
+    private final AtomicBoolean active = new AtomicBoolean(false);
+    private final AtomicBoolean checksRegistered = new AtomicBoolean(false);
 
     // Use a single Jakarta Contexts and Dependency Injection instance to select and destroy all HealthCheck probes instances
     private Instance<Object> instance;
@@ -69,10 +72,10 @@ public class CDIExtension implements Extension {
     private HealthCheck defaultStartupCheck;
 
 
-    public CDIExtension(MicroProfileHealthReporter healthReporter, Module module, Supplier<BeanManager> beanMangerSupplier) {
+    public CDIExtension(MicroProfileHealthReporter healthReporter, Module module, CompletableFuture<BeanManager> beanManagerFuture) {
         this.reporter = healthReporter;
         this.module = module;
-        this.beanMangerSupplier = beanMangerSupplier;
+        this.beanManagerFuture = beanManagerFuture;
     }
 
     /**
@@ -80,7 +83,26 @@ public class CDIExtension implements Extension {
      * add them to the {@link MicroProfileHealthReporter}.
      */
     private void afterDeploymentValidation(@Observes final AfterDeploymentValidation avd) {
-        instance = beanMangerSupplier.get().createInstance();
+        active.set(true);
+        beanManagerFuture.whenComplete((beanManager, error) -> {
+            if (error != null || beanManager == null) {
+                return;
+            }
+            if (!active.get() || !checksRegistered.compareAndSet(false, true)) {
+                return;
+            }
+            final ClassLoader originalTccl = Thread.currentThread().getContextClassLoader();
+            Thread.currentThread().setContextClassLoader(module.getClassLoader());
+            try {
+                registerHealthChecks(beanManager);
+            } finally {
+                Thread.currentThread().setContextClassLoader(originalTccl);
+            }
+        });
+    }
+
+    private void registerHealthChecks(BeanManager beanManager) {
+        instance = beanManager.createInstance();
 
         addHealthChecks(Liveness.Literal.INSTANCE, reporter::addLivenessCheck, livenessChecks);
         addHealthChecks(Readiness.Literal.INSTANCE, reporter::addReadinessCheck, readinessChecks);
@@ -120,6 +142,15 @@ public class CDIExtension implements Extension {
      * Remove all the instances of {@link HealthCheck} from the {@link MicroProfileHealthReporter}.
      */
     public void beforeShutdown(@Observes final BeforeShutdown bs) {
+        active.set(false);
+        if (instance == null) {
+            livenessChecks.clear();
+            readinessChecks.clear();
+            startupChecks.clear();
+            defaultReadinessCheck = null;
+            defaultStartupCheck = null;
+            return;
+        }
         removeHealthCheck(livenessChecks, reporter::removeLivenessCheck);
         removeHealthCheck(readinessChecks, reporter::removeReadinessCheck);
         removeHealthCheck(startupChecks, reporter::removeStartupCheck);
