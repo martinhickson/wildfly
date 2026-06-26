@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<jboss-deployment-structure xmlns="urn:jboss:deployment-structure:1.3">
+    <deployment>
+        <dependencies>
+            <module name="com.h2database.h2"/>
+            <system export="true">
+                <paths>
+                    <path name="sun/misc"/>
+                </paths>
+            </system>
+        </dependencies>
+    </deployment>
+</jboss-deployment-structure>

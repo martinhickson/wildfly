@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<config xmlns="http://www.ehcache.org/v3"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.ehcache.org/v3 https://www.ehcache.org/schema/ehcache-core-3.10.xsd">
+
+    <cache-template name="default">
+        <heap unit="entries">1000</heap>
+    </cache-template>
+
+    <cache alias="org.wildfly.hibernate.it.ehcache.Student" uses-template="default">
+        <key-type>java.lang.Long</key-type>
+        <value-type>org.wildfly.hibernate.it.ehcache.Student</value-type>
+    </cache>
+
+</config>
