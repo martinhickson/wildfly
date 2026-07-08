@@ -1,0 +1,188 @@
+name: Release Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 36.0.1.Final-jboss-threads-3.6.1)'
+        required: true
+        default: '36.0.1.Final-jboss-threads-3.6.1'
+        type: string
+      release_branch:
+        description: 'Release branch name'
+        required: true
+        default: 'release/36.0.1.Final-jboss-threads-3.6.1'
+        type: string
+      source_branch:
+        description: 'Source branch to create release from'
+        required: true
+        default: '36.0.1-maintenance'
+        type: string
+      wildfly_core_version:
+        description: 'WildFly Core version to install before build'
+        required: true
+        default: '28.0.1.Final-jboss-threads-3.6.1'
+        type: string
+      upload_to_github_packages:
+        description: 'Upload Maven artifacts to GitHub Packages?'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout WildFly Core
+        uses: actions/checkout@v4
+        with:
+          repository: martinhickson/wildfly-core
+          ref: ${{ github.event.inputs.wildfly_core_version }}
+          path: wildfly-core
+          fetch-depth: 0
+
+      - name: Set up Temurin 11 (JDK 11) for WildFly Core
+        uses: actions/setup-java@v4
+        with:
+          java-version: 11
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Install WildFly Core release
+        run: |
+          cd wildfly-core
+          mvn -B -ntp install -DskipTests=true -Denforcer.skip=true -Dcheckstyle.skip=true
+
+      - name: Checkout WildFly
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Temurin 17 (JDK 17) for WildFly
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch all refs
+        run: git fetch --all --tags
+
+      - name: Create or checkout release branch
+        run: |
+          SOURCE_BRANCH="${{ github.event.inputs.source_branch }}"
+          RELEASE_BRANCH="${{ github.event.inputs.release_branch }}"
+
+          if ! git show-ref --verify --quiet refs/remotes/origin/$SOURCE_BRANCH; then
+            echo "Error: Source branch '$SOURCE_BRANCH' does not exist remotely"
+            exit 1
+          fi
+
+          git checkout $SOURCE_BRANCH
+          git pull origin $SOURCE_BRANCH
+
+          if git show-ref --verify --quiet refs/heads/$RELEASE_BRANCH; then
+            git checkout $RELEASE_BRANCH
+            git pull origin $RELEASE_BRANCH || true
+          elif git show-ref --verify --quiet refs/remotes/origin/$RELEASE_BRANCH; then
+            git checkout -b $RELEASE_BRANCH origin/$RELEASE_BRANCH
+          else
+            git checkout -b $RELEASE_BRANCH
+          fi
+
+      - name: Set Maven version
+        run: |
+          mvn -B -ntp versions:set -DnewVersion=${{ github.event.inputs.version }} -DgenerateBackupPoms=false
+
+      - name: Clear SNAPSHOT dependencies from local Maven repository
+        run: |
+          LOCAL_REPO="$HOME/.m2/repository"
+          if [ -d "$LOCAL_REPO" ]; then find "$LOCAL_REPO" -name "*SNAPSHOT*" | xargs -I {} rm -rfv "{}"; fi
+        shell: bash
+
+      - name: Build with Maven
+        run: mvn -U -B -ntp -Dquickly install -DskipTests=true -Denforcer.skip=true -Dcheckstyle.skip=true
+
+      - name: Commit version changes
+        run: |
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Set version to ${{ github.event.inputs.version }}"
+          fi
+
+      - name: Push release branch
+        run: |
+          BRANCH="${{ github.event.inputs.release_branch }}"
+          if git show-ref --verify --quiet refs/remotes/origin/$BRANCH; then
+            git push origin "$BRANCH" || exit 1
+          else
+            git push -u origin "$BRANCH"
+          fi
+
+      - name: Create and push tag
+        run: |
+          TAG="${{ github.event.inputs.version }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            if ! git ls-remote --tags origin "$TAG" | grep -q "$TAG"; then
+              git push origin "$TAG"
+            fi
+          elif git ls-remote --tags origin "$TAG" | grep -q "$TAG"; then
+            echo "Tag $TAG already exists remotely"
+          else
+            git tag -a "$TAG" -m "Release $TAG"
+            git push origin "$TAG"
+          fi
+
+      - name: Deploy artifacts to GitHub Maven Packages (Optional)
+        if: ${{ github.event.inputs.upload_to_github_packages == 'true' }}
+        run: |
+          mkdir -p ~/.m2
+          cat <<EOF > ~/.m2/settings.xml
+          <settings>
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
+              </server>
+            </servers>
+            <profiles>
+              <profile>
+                <id>github-packages</id>
+                <repositories>
+                  <repository>
+                    <id>github</id>
+                    <url>https://maven.pkg.github.com/${{ github.repository }}</url>
+                  </repository>
+                </repositories>
+                <pluginRepositories>
+                  <pluginRepository>
+                    <id>github</id>
+                    <url>https://maven.pkg.github.com/${{ github.repository }}</url>
+                  </pluginRepository>
+                </pluginRepositories>
+              </profile>
+            </profiles>
+            <activeProfiles>
+              <activeProfile>github-packages</activeProfile>
+            </activeProfiles>
+          </settings>
+          EOF
+          mvn -B -ntp deploy -DskipTests=true -DdeployAtEnd=true \
+              -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/${{ github.repository }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
