@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g., 36.0.1.Final-jboss-threads-3.6.1)'
+        description: 'Release version (e.g., 36.0.1-bravura-2)'
         required: true
-        default: '36.0.1.Final-jboss-threads-3.6.1'
+        default: '36.0.1-bravura-2'
         type: string
       release_branch:
         description: 'Release branch name'
         required: true
-        default: 'release/36.0.1.Final-jboss-threads-3.6.1'
+        default: 'release/36.0.1-bravura-2'
         type: string
       source_branch:
         description: 'Source branch to create release from'
@@ -113,15 +113,47 @@ jobs:
         shell: bash
 
       - name: Build with Maven
-        run: mvn -U -B -ntp -Dquickly install -DskipTests=true -Denforcer.skip=true -Dcheckstyle.skip=true
+        run: mvn -U -B -ntp -Dquickly install -Drelease=true -DskipTests=true -Denforcer.skip=true -Dcheckstyle.skip=true
+
+      - name: Find WildFly distribution files and generate SHA-512
+        id: find_dist
+        run: |
+          DIST_PATH=$(find . -path "*/dist/target/wildfly-*.zip" ! -name "wildfly-preview-*.zip" \
+            ! -name "*src.zip" | head -n 1)
+          if [[ -f "$DIST_PATH" ]]; then
+            DIST_FILE=$(basename "$DIST_PATH")
+            DIST_DIR=$(dirname "$DIST_PATH")
+            sha512sum "$DIST_PATH" | awk '{ print $1 }' > "$DIST_DIR/$DIST_FILE.sha512"
+            echo "DIST_FILE_PATH=$DIST_PATH" >> $GITHUB_ENV
+            echo "DIST_SHA512_PATH=$DIST_DIR/$DIST_FILE.sha512" >> $GITHUB_ENV
+            echo "Found distribution: $DIST_FILE"
+          else
+            echo "WildFly distribution ZIP not found!"
+            exit 1
+          fi
+
+          DIST_SRC_PATH=$(find . -path "*/dist/target/wildfly-*src.zip" ! -name "wildfly-preview-*.zip" \
+            | head -n 1)
+          if [[ -f "$DIST_SRC_PATH" ]]; then
+            DIST_SRC_FILE=$(basename "$DIST_SRC_PATH")
+            DIST_SRC_DIR=$(dirname "$DIST_SRC_PATH")
+            sha512sum "$DIST_SRC_PATH" | awk '{ print $1 }' > "$DIST_SRC_DIR/$DIST_SRC_FILE.sha512"
+            echo "DIST_SRC_FILE_PATH=$DIST_SRC_PATH" >> $GITHUB_ENV
+            echo "DIST_SRC_SHA512_PATH=$DIST_SRC_DIR/$DIST_SRC_FILE.sha512" >> $GITHUB_ENV
+            echo "Found source distribution: $DIST_SRC_FILE"
+          else
+            echo "WildFly distribution ZIP SRC not found!"
+            exit 1
+          fi
+        shell: bash
 
       - name: Commit version changes
         run: |
-          git add -A
+          git add '**/pom.xml'
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Set version to ${{ github.event.inputs.version }}"
+            git commit -m "Release version ${{ github.event.inputs.version }}"
           fi
 
       - name: Push release branch
@@ -146,6 +178,23 @@ jobs:
             git tag -a "$TAG" -m "Release $TAG"
             git push origin "$TAG"
           fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: WildFly Release ${{ github.event.inputs.version }} Latest
+          body: |
+            This is a security-enhanced release of WildFly that builds on the solid foundation of the WildFly ${{ github.event.inputs.version }} distribution.
+          files: |
+            ${{ env.DIST_FILE_PATH }}
+            ${{ env.DIST_SHA512_PATH }}
+            ${{ env.DIST_SRC_FILE_PATH }}
+            ${{ env.DIST_SRC_SHA512_PATH }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy artifacts to GitHub Maven Packages (Optional)
         if: ${{ github.event.inputs.upload_to_github_packages == 'true' }}
