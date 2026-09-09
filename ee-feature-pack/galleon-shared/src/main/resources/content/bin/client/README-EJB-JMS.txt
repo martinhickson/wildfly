@@ -40,7 +40,7 @@ org.jboss.marshalling:jboss-marshalling
 org.jboss.marshalling:jboss-marshalling-river
 org.jboss.remoting:jboss-remoting
 org.jboss.remotingjmx:remoting-jmx
-org.jgroups:jgroups
+io.github.martinhickson:jgroups
 org.slf4j:slf4j-api
 org.slf4j:jcl-over-slf4j
 org.jboss.threads:jboss-threads
