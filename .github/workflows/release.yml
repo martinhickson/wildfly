@@ -119,7 +119,8 @@ jobs:
         id: find_dist
         run: |
           DIST_PATH=$(find . -path "*/dist/target/wildfly-*.zip" ! -name "wildfly-preview-*.zip" \
-            ! -name "*src.zip" | head -n 1)
+            ! -name "*src.zip" ! -name "*unstable-api-annotation-index*" \
+            -name "wildfly-${{ github.event.inputs.version }}.zip" | head -n 1)
           if [[ -f "$DIST_PATH" ]]; then
             DIST_FILE=$(basename "$DIST_PATH")
             DIST_DIR=$(dirname "$DIST_PATH")
