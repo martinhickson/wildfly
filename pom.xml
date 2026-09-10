@@ -482,7 +482,7 @@
         <version.org.jctools.jctools-core>2.1.2</version.org.jctools.jctools-core>
         <version.org.jgroups>4.2.21-bravura-2</version.org.jgroups>
         <version.org.jgroups.azure>1.3.1.Final</version.org.jgroups.azure>
-        <version.org.jgroups.kubernetes>1.0.17-bravura-5</version.org.jgroups.kubernetes>
+        <version.org.jgroups.kubernetes>1.0.17-bravura-6</version.org.jgroups.kubernetes>
         <version.org.jipijapa>1.0.1.Final</version.org.jipijapa>
         <version.org.jvnet.staxex>1.8.3</version.org.jvnet.staxex>
         <version.org.keycloak>17.0.0</version.org.keycloak>
@@ -9284,7 +9284,7 @@
             </dependency>
 
             <dependency>
-                <groupId>org.jgroups.kubernetes</groupId>
+                <groupId>io.github.martinhickson</groupId>
                 <artifactId>jgroups-kubernetes</artifactId>
                 <version>${version.org.jgroups.kubernetes}</version>
                 <exclusions>
