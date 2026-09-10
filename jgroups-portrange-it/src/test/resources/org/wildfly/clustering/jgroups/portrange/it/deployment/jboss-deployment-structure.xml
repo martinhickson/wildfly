@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jboss-deployment-structure xmlns="urn:jboss:deployment-structure:1.2">
+    <deployment>
+        <!-- Access the same org.jgroups module the server runs (io.github.martinhickson:jgroups bravura build) -->
+        <dependencies>
+            <module name="org.jgroups"/>
+        </dependencies>
+    </deployment>
+</jboss-deployment-structure>

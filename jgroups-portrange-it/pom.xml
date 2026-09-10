@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ JBoss, Home of Professional Open Source.
+  ~ Copyright 2026, Red Hat, Inc., and individual contributors
+  ~ as indicated by the @author tags. See the copyright.txt file in the
+  ~ distribution for a full listing of individual contributors.
+  -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.wildfly</groupId>
+        <artifactId>wildfly-parent</artifactId>
+        <version>26.1.3.Final</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>wildfly-jgroups-portrange-it</artifactId>
+    <packaging>jar</packaging>
+
+    <name>WildFly: jgroups TCP port_range Arquillian integration tests</name>
+    <description>
+        Arquillian integration tests for the TCP port_range default change in
+        io.github.martinhickson:jgroups (4.2.21-bravura-2+): TCP defaults port_range to 0
+        (bind exactly bind_port, fail fast if taken) while UDP keeps the TP default of 10.
+
+        Runs against a WildFly distribution zip (dist/target build, ~/.m2, or -Dwildfly.it.dist.zip).
+        Not part of the default reactor; run with:
+          mvn -f jgroups-portrange-it/pom.xml verify
+        after building/installing the distribution, or point -Dwildfly.it.dist.zip at a
+        released zip (e.g. from https://github.com/martinhickson/wildfly/releases).
+    </description>
+
+    <properties>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <wildfly.it.dist.version>${project.version}</wildfly.it.dist.version>
+        <wildfly.it.dist.zip>${project.basedir}/../dist/target/wildfly-${wildfly.it.dist.version}.zip</wildfly.it.dist.zip>
+        <wildfly.it.jboss.home>${project.build.directory}/wildfly-${wildfly.it.dist.version}</wildfly.it.jboss.home>
+        <checkstyle.skip>true</checkstyle.skip>
+        <version.junit>4.13.2</version.junit>
+    </properties>
+
+    <dependencies>
+        <!-- Compile against the same jgroups the container runs (org.jgroups module, scope provided) -->
+        <dependency>
+            <groupId>io.github.martinhickson</groupId>
+            <artifactId>jgroups</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.arquillian.junit</groupId>
+            <artifactId>arquillian-junit-container</artifactId>
+            <version>${version.org.jboss.arquillian.core}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.arquillian</groupId>
+            <artifactId>wildfly-arquillian-container-managed</artifactId>
+            <version>${version.org.wildfly.arquillian}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${version.junit}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <skipTests>true</skipTests>
+                </configuration>
+            </plugin>
+            <!-- Unpack the distribution zip for the Arquillian managed container -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>unpack-wildfly-dist</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <available file="${wildfly.it.dist.zip}" property="dist.zip.present"/>
+                                <fail unless="dist.zip.present" message="WildFly distribution zip not found at ${wildfly.it.dist.zip}. Build the dist (mvn install -DskipTests from the wildfly root) or pass -Dwildfly.it.dist.zip=/path/to/wildfly.zip"/>
+                                <unzip src="${wildfly.it.dist.zip}" dest="${project.build.directory}"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <include>**/*IT.java</include>
+                    </includes>
+                    <redirectTestOutputToFile>false</redirectTestOutputToFile>
+                    <trimStackTrace>false</trimStackTrace>
+                    <systemPropertyVariables>
+                        <wildfly.it.jboss.home>${wildfly.it.jboss.home}</wildfly.it.jboss.home>
+                    </systemPropertyVariables>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

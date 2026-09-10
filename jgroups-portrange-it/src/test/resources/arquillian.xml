@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<arquillian xmlns="urn:jboss:arquillian:1.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="urn:jboss:arquillian:1.0 http://jboss.org/schema/arquillian/arquillian_1_0.xsd">
+
+    <container qualifier="wildfly" default="true">
+        <configuration>
+            <property name="jbossHome">${wildfly.it.jboss.home}</property>
+            <property name="serverConfig">standalone.xml</property>
+            <property name="allowConnectingToRunningServer">false</property>
+        </configuration>
+    </container>
+</arquillian>
