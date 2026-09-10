@@ -98,7 +98,9 @@ jobs:
             echo "Error: Invalid version format. Expected X.Y.Z[-qualifier] or X.Y.Z.Qualifier[.Qualifier...] (e.g., 26.1.3-bravura-21 or 26.1.3.Final.bravura-9)"
             exit 1
           fi
-          if [[ ! "${{ inputs.tag_name }}" =~ ${version_pattern} ]]; then
+          # Allow an optional name prefix on tags (e.g. wildfly-26.1.3.Final.bravura-9)
+          tag_pattern="^([A-Za-z0-9_]+-)?[0-9]+\\.[0-9]+\\.[0-9]+([.-][A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*)?$"
+          if [[ ! "${{ inputs.tag_name }}" =~ ${tag_pattern} ]]; then
             echo "Error: Invalid tag name format. Expected X.Y.Z[-qualifier] or X.Y.Z.Qualifier[.Qualifier...] (e.g., 26.1.3-bravura-21 or 26.1.3.Final.bravura-9)"
             exit 1
           fi
