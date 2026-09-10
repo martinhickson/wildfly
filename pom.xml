@@ -480,7 +480,7 @@
         <version.org.jboss.ws.spi>3.4.0.Final</version.org.jboss.ws.spi>
         <version.org.jboss.xnio.netty.netty-xnio-transport>0.1.9.Final</version.org.jboss.xnio.netty.netty-xnio-transport>
         <version.org.jctools.jctools-core>2.1.2</version.org.jctools.jctools-core>
-        <version.org.jgroups>4.2.21.Final</version.org.jgroups>
+        <version.org.jgroups>4.2.21-bravura-2</version.org.jgroups>
         <version.org.jgroups.azure>1.3.1.Final</version.org.jgroups.azure>
         <version.org.jgroups.kubernetes>1.0.17-bravura-5</version.org.jgroups.kubernetes>
         <version.org.jipijapa>1.0.1.Final</version.org.jipijapa>
@@ -9266,7 +9266,7 @@
             </dependency>
 
             <dependency>
-                <groupId>org.jgroups</groupId>
+                <groupId>io.github.martinhickson</groupId>
                 <artifactId>jgroups</artifactId>
                 <version>${version.org.jgroups}</version>
             </dependency>

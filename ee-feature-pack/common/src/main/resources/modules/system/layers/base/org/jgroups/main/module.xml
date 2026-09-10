@@ -25,7 +25,7 @@
 <module xmlns="urn:jboss:module:1.9" name="org.jgroups">
 
     <resources>
-        <artifact name="${org.jgroups:jgroups}"/>
+        <artifact name="${io.github.martinhickson:jgroups}"/>
     </resources>
 
     <dependencies>
