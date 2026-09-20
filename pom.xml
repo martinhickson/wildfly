@@ -370,7 +370,7 @@
         <version.org.apache.activemq.artemis>2.19.1</version.org.apache.activemq.artemis>
         <version.org.apache.activemq.artemis.native>1.0.2</version.org.apache.activemq.artemis.native>
         <version.org.apache.avro>1.11.4</version.org.apache.avro>
-        <version.org.apache.cxf>3.4.10</version.org.apache.cxf>
+        <version.org.apache.cxf>3.6.12</version.org.apache.cxf>
         <version.org.apache.cxf.xjcplugins>3.3.2</version.org.apache.cxf.xjcplugins>
         <version.org.apache.ds>2.0.0-M24</version.org.apache.ds>
         <version.org.apache.httpcomponents.httpasyncclient>4.1.5</version.org.apache.httpcomponents.httpasyncclient>
@@ -445,7 +445,7 @@
         <version.org.jboss.mod_cluster>1.4.4.Final</version.org.jboss.mod_cluster>
         <version.org.jboss.narayana>5.12.5.Final</version.org.jboss.narayana>
         <version.org.jboss.openjdk-orb>8.1.7.Final</version.org.jboss.openjdk-orb>
-        <version.org.jboss.resteasy>4.7.7.Final</version.org.jboss.resteasy>
+        <version.org.jboss.resteasy>4.7.8.Final</version.org.jboss.resteasy>
         <!-- This is required for the RESTEasy 6.0.0.Beta1 upgrade. As of RESTEasy 5 there is no more MP related implementations -->
         <version.org.jboss.resteasy.microprofile>1.0.0.Final</version.org.jboss.resteasy.microprofile>
         <version.org.jboss.seam.int>7.0.0.GA</version.org.jboss.seam.int>
