@@ -286,6 +286,8 @@
         <version.com.fasterxml.jackson>2.22.2</version.com.fasterxml.jackson>
         <version.com.fasterxml.jackson.annotations>2.22</version.com.fasterxml.jackson.annotations>
         <version.com.fasterxml.jackson.databind>2.22.2</version.com.fasterxml.jackson.databind>
+        <!-- EE9 preview: jakarta-classified jaxrs/jaxb artifacts stopped being published after 2.12.x -->
+        <version.com.fasterxml.jackson.jakarta-classified>2.12.7</version.com.fasterxml.jackson.jakarta-classified>
         <version.com.github.ben-manes.caffeine>2.9.3</version.com.github.ben-manes.caffeine>
         <version.com.github.fge.btf>1.2</version.com.github.fge.btf>
         <version.com.github.fge.jackson-coreutils>1.8</version.com.github.fge.jackson-coreutils>

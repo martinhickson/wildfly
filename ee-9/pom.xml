@@ -124,7 +124,7 @@
             <dependency>
                 <groupId>com.fasterxml.jackson.jaxrs</groupId>
                 <artifactId>jackson-jaxrs-base</artifactId>
-                <version>${version.com.fasterxml.jackson}</version>
+                <version>${version.com.fasterxml.jackson.jakarta-classified}</version>
                 <classifier>jakarta</classifier>
                 <exclusions>
                     <exclusion>
@@ -137,7 +137,7 @@
             <dependency>
                 <groupId>com.fasterxml.jackson.jaxrs</groupId>
                 <artifactId>jackson-jaxrs-json-provider</artifactId>
-                <version>${version.com.fasterxml.jackson}</version>
+                <version>${version.com.fasterxml.jackson.jakarta-classified}</version>
                 <classifier>jakarta</classifier>
                 <exclusions>
                     <exclusion>
@@ -150,7 +150,7 @@
             <dependency>
                 <groupId>com.fasterxml.jackson.module</groupId>
                 <artifactId>jackson-module-jaxb-annotations</artifactId>
-                <version>${version.com.fasterxml.jackson}</version>
+                <version>${version.com.fasterxml.jackson.jakarta-classified}</version>
                 <classifier>jakarta</classifier>
                 <exclusions>
                     <exclusion>
